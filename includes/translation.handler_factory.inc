@@ -116,6 +116,22 @@ class EntityTranslationHandlerFactory {
       $revision_id = isset($revision_id) ? $revision_id : 0;
       $entity->entity_translation_handler_id = $entity_type . '-' . (!empty($id) ? 'eid-' . $id . '-' . $revision_id : 'new-' . self::$newId++);
     }
+    else {
+      // Ensure that self::$newId is up to date. The reason: some not saved
+      // entities could already have the "entity_translation_handler_id"
+      // property, because they could be passed between sessions, for example,
+      // through the $form_state. At the same time, new entities could be
+      // created in current session. If these entities are of the same type,
+      // there is a big chance that two different entities will have the same
+      // handler ID.
+      $prefix = "$entity_type-new-";
+      if (strpos($entity->entity_translation_handler_id, $prefix) === 0) {
+        $new_id = (int) substr($entity->entity_translation_handler_id, strlen($prefix));
+        if ($new_id >= self::$newId) {
+          self::$newId = ++$new_id;
+        }
+      }
+    }
     return $entity->entity_translation_handler_id;
   }
 
