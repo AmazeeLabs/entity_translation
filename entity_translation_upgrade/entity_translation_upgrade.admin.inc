@@ -79,7 +79,7 @@ function entity_translation_upgrade_do($types, &$context) {
     // Here we load original nodes and translations all together, but the batch
     // size is determined only by node translations.
     $nids = array_keys($result);
-    $nodes = node_load_multiple($nids + array_unique($result));
+    $nodes = node_load_multiple(array_values(array_unique(array_merge($nids, $result))));
 
     $updated_nodes = array();
     $node_translations = array();
