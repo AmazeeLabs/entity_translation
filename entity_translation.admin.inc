@@ -269,6 +269,13 @@ function entity_translation_overview($entity_type, $entity, $callback = NULL) {
           $options[] = l(t('edit'), $link['href'], $link);
         }
 
+        if (entity_translation_switch_original_language_access($entity_type, $entity, $source, $langcode)) {
+          $switch_original_path = "{$handler->getEditPath()}/switch-original-language/$source/$langcode";
+          $options[] = l(t('set as original language'), $switch_original_path, array(
+            'query' => drupal_get_destination(),
+          ));
+        }
+
         $status = $translation['status'] ? t('Published') : t('Not published');
         $classes[] = $translation['status'] ? 'published' : 'not-published';
         $status .= isset($translation['translate']) && $translation['translate'] ? theme('entity_translation_overview_outdated', array('message' => t('outdated'))) : '';

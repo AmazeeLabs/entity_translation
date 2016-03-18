@@ -487,6 +487,25 @@ function entity_translation_menu_alter(&$items) {
             'access callback' => 'entity_translation_add_access',
             'access arguments' => array_merge($args, $original_item['access arguments']),
           ) + $original_item;
+
+          // Add switch-original-language callback.
+          $switch_original_language_path = "$edit_path/switch-original-language/%entity_translation_language/%entity_translation_language";
+          $source_position = count($edit_path_parts) + 1;
+          $target_position = count($edit_path_parts) + 2;
+          $args = array(
+            $entity_type,
+            $entity_position,
+            $source_position,
+            $target_position,
+          );
+          $items[$switch_original_language_path] = array(
+            'title callback' => 'Switch original language',
+            'page callback' => 'drupal_get_form',
+            'page arguments' => array_merge(array('entity_translation_switch_original_language_form'), $args),
+            'type' => MENU_CALLBACK,
+            'access callback' => 'entity_translation_switch_original_language_access',
+            'access arguments' => $args,
+          ) + $original_item;
         }
 
         // Make the "Translate" tab follow the "Edit" tab if possible.
@@ -688,6 +707,74 @@ function entity_translation_add_page() {
 
   // Display the entity edit form.
   return _entity_translation_callback($edit_form_item['page callback'], $args, $edit_form_item);
+}
+
+/**
+ * Access callback for the switch-original-language operation.
+ */
+function entity_translation_switch_original_language_access($entity_type, $entity, $current_original_langcode, $new_original_langcode) {
+  if (empty($entity) || !function_exists('entity_save')) {
+    return FALSE;
+  }
+  $handler = entity_translation_get_handler($entity_type, $entity);
+  $translations = $handler->getTranslations();
+  return (
+    $handler->getAccess('update')
+    && isset($translations->data[$new_original_langcode])
+    && $handler->getTranslationAccess($new_original_langcode)
+    && $current_original_langcode == $handler->getLanguage()
+    && $current_original_langcode != $new_original_langcode
+  );
+}
+
+/**
+ * Confirmation form for the switch-original-language operation.
+ */
+function entity_translation_switch_original_language_form($form, &$form_state, $entity_type, $entity, $current_original_langcode, $new_original_langcode) {
+  $languages = language_list();
+  return confirm_form(
+    $form,
+    t('Are you sure you want to change the original language?'),
+    isset($_GET['destination']) ? $_GET['destination'] : '<front>',
+    t('This will result the following:
+<ul>
+<li>%new_original will be set as the original language,</li>
+<li>%current_original will be converted to a translation having %new_original as the source language.</li>
+</ul>', array(
+      '%current_original' => $languages[$current_original_langcode]->name,
+      '%new_original' => $languages[$new_original_langcode]->name,
+    ))
+  );
+}
+
+/**
+ * Submit callback for the switch-original-language operation.
+ */
+function entity_translation_switch_original_language_form_submit($form, &$form_state) {
+  list($entity_type, $entity, $current_original_langcode, $new_original_langcode) = $form_state['build_info']['args'];
+  if (!entity_translation_switch_original_language_access($entity_type, $entity, $current_original_langcode, $new_original_langcode)) {
+    drupal_set_message(t('Cannot change the original language.'), 'error');
+    return;
+  }
+
+  // If entity has the language property, update it as well.
+  /* @see \EntityTranslationDefaultHandler::getLanguage() */
+  $entity_info = entity_get_info($entity_type);
+  if (isset($entity_info['entity keys']['language'])) {
+    $entity->{$entity_info['entity keys']['language']} = $new_original_langcode;
+  }
+
+  // Update the source language.
+  $handler = entity_translation_get_handler($entity_type, $entity);
+  $translations = $handler->getTranslations();
+  $current_original_translation = $translations->data[$current_original_langcode];
+  $handler->setOriginalLanguage($new_original_langcode);
+
+  // Restore current original as a translation.
+  $translations->data[$current_original_langcode] = array('source' => $new_original_langcode) + $current_original_translation;
+
+  entity_save($entity_type, $entity);
+  drupal_set_message(t('The original language has been changed.'));
 }
 
 /**
