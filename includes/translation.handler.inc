@@ -156,15 +156,23 @@ interface EntityTranslationHandlerInterface {
   /**
    * Returns the wrapped entity.
    *
-   * @param return
+   * @return object
    *   The wrapped entity.
    */
   public function getEntity();
 
   /**
+   * Returns the current revision for entity types supporting forward revisions.
+   *
+   * @return object
+   *   The current revision of the wrapped entity.
+   */
+  public function getCurrentEntityRevision();
+
+  /**
    * Returns the wrapped entity type.
    *
-   * @param return
+   * @return string
    *   The wrapped entity type.
    */
   public function getEntityType();
@@ -409,7 +417,7 @@ class EntityTranslationDefaultHandler implements EntityTranslationHandlerInterfa
   /**
    * Read the translation data from the storage.
    */
-  public static function loadMultiple($entity_type, $entities) {
+  public static function loadMultiple($entity_type, $entities, $reset = FALSE) {
     $entity_info = entity_get_info($entity_type);
     if (isset($entity_info['entity keys']['translations'])){
       $translations_key = $entity_info['entity keys']['translations'];
@@ -422,34 +430,66 @@ class EntityTranslationDefaultHandler implements EntityTranslationHandlerInterfa
     $revisionable = self::isEntityTypeRevisionable($entity_type);
     $revisions_ids = array();
     foreach ($entities as $id => $entity) {
-      $entities[$id]->{$translations_key} = self::emptyTranslations();
+      // Set empty values only if explicitly requested of if translations were
+      // not loaded yet.
+      if ($reset || !isset($entity->{$translations_key})) {
+        $entities[$id]->{$translations_key} = self::emptyTranslations();
+      }
+      else {
+        unset($entities[$id]);
+      }
       if ($revisionable) {
         list(, $revisions_id,) = entity_extract_ids($entity_type, $entity);
         $revisions_ids[$id] = $revisions_id;
       }
     }
 
-    $table = $revisionable ? 'entity_translation_revision' : 'entity_translation';
-    $query = db_select($table, 'et')
-      ->fields('et')
-      ->condition('entity_type', $entity_type);
+    if ($entities) {
+      $table = $revisionable ? 'entity_translation_revision' : 'entity_translation';
+      $query = db_select($table, 'et')
+        ->fields('et')
+        ->condition('entity_type', $entity_type);
 
-    if (!$revisionable) {
-      $query->condition('entity_id', array_keys($entities), 'IN');
-    }
-    else {
-      $query->condition('revision_id', $revisions_ids, 'IN');
-    }
+      if (!$revisionable) {
+        $query->condition('entity_id', array_keys($entities), 'IN');
+      }
+      else {
+        $query->condition('revision_id', $revisions_ids, 'IN');
+      }
 
-    $results = $query->execute();
+      if ($revisionable) {
+        $revisions_ids = array();
+        foreach ($entities as $id => $entity) {
+          list(, $revisions_id,) = entity_extract_ids($entity_type, $entity);
+          $revisions_ids[$id] = $revisions_id;
+        }
+        $table = 'entity_translation_revision';
+      }
 
-    foreach ($results as $row) {
-      $id = $row->entity_id;
-      $entities[$id]->{$translations_key}->data[$row->language] = (array) $row;
+      $query = db_select($table, 'et')
+        ->fields('et')
+        ->condition('entity_type', $entity_type);
 
-      // Only the original translation has an empty source.
-      if (empty($row->source)) {
-        $entities[$id]->{$translations_key}->original = $row->language;
+      if (!$revisionable) {
+        $query->condition('entity_id', array_keys($entities), 'IN');
+      }
+      else {
+        $query->condition('revision_id', $revisions_ids, 'IN');
+      }
+
+      $results = $query
+        ->orderBy('entity_id')
+        ->orderBy('created')
+        ->execute();
+
+      foreach ($results as $row) {
+        $id = $row->entity_id;
+        $entities[$id]->{$translations_key}->data[$row->language] = (array) $row;
+
+        // Only the original translation has an empty source.
+        if (empty($row->source)) {
+          $entities[$id]->{$translations_key}->original = $row->language;
+        }
       }
     }
   }
@@ -908,10 +948,14 @@ class EntityTranslationDefaultHandler implements EntityTranslationHandlerInterfa
   public function setEntity($entity) {
     $this->entity = $entity;
 
+    // Update entity properties.
+    list($this->entityId, $this->revisionId, $this->bundle) = entity_extract_ids($this->entityType, $this->entity);
+
     // Ensure translations data is populated.
     $translations_key = $this->getTranslationsKey();
     if ($translations_key && !isset($this->entity->{$translations_key})) {
-      $this->entity->{$translations_key} = self::emptyTranslations();
+      // Creates the translations key on the entity object.
+      $this->getTranslations();
     }
 
     // Update entity properties.
@@ -928,6 +972,18 @@ class EntityTranslationDefaultHandler implements EntityTranslationHandlerInterfa
    */
   public function getEntity() {
     return $this->entity;
+  }
+
+  /**
+   * @see EntityTranslationHandlerInterface::getCurrentEntityRevision()
+   */
+  public function getCurrentEntityRevision() {
+    // State flow and Workbench Moderation 2.x integration.
+    if (!empty($this->entityInfo['state_flow_entity']) && module_exists('state_flow') && function_exists('state_flow_entity_get_active_revision')) {
+      return state_flow_entity_get_active_revision($this->getEntity(), $this->getEntityType());
+    }
+    $entities = entity_load($this->entityType, array($this->entityId));
+    return reset($entities);
   }
 
   /**

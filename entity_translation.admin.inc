@@ -215,7 +215,7 @@ function entity_translation_overview($entity_type, $entity, $callback = NULL) {
     return entity_translation_overview_callback($callback, $entity);
   }
 
-  $handler = entity_translation_get_handler($entity_type, $entity);
+  $handler = EntityTranslationHandlerFactory::getInstance()->getCurrentRevisionHandler($entity_type, $entity);
   // Ensure $entity holds an entity object and not an id.
   $entity = $handler->getEntity();
   $handler->initPathScheme();
@@ -408,7 +408,7 @@ function theme_entity_translation_overview_outdated($variables){
  * Translation deletion confirmation form.
  */
 function entity_translation_delete_confirm($form, $form_state, $entity_type, $entity, $langcode) {
-  $handler = entity_translation_get_handler($entity_type, $entity);
+  $handler = EntityTranslationHandlerFactory::getInstance()->getCurrentRevisionHandler($entity_type, $entity);
   $handler->setFormLanguage($langcode);
   $languages = language_list();
 

@@ -537,7 +537,8 @@ function entity_translation_edit_page() {
   $edit_form_item = array_shift($args);
 
   // Set the current form language.
-  $handler = entity_translation_get_handler($entity_type, $entity);
+  $handler = EntityTranslationHandlerFactory::getInstance()->getCurrentRevisionHandler($entity_type, $entity);
+  $entity = $handler->getEntity();
   $handler->initPathScheme();
   $langcode = entity_translation_get_existing_language($entity_type, $entity, $langcode);
   $handler->setFormLanguage($langcode);
@@ -681,7 +682,7 @@ function entity_translation_add_page() {
   $langcode = array_shift($args);
   $edit_form_item = array_shift($args);
 
-  $handler = entity_translation_get_handler($entity_type, $entity);
+  $handler = EntityTranslationHandlerFactory::getInstance()->getCurrentRevisionHandler($entity_type, $entity);
   $handler->initPathScheme();
   $handler->setFormLanguage($langcode);
   $handler->setSourceLanguage($source);
@@ -1599,7 +1600,10 @@ function entity_translation_field_attach_submit($entity_type, $entity, $form, &$
 function entity_translation_menu_local_tasks_alter(&$data, $router_item, $root_path) {
   // When displaying the main edit form, we need to craft an additional level of
   // local tasks for each available translation.
-  $handler = entity_translation_get_handler();
+  $factory = EntityTranslationHandlerFactory::getInstance();
+  if ($last_handler = $factory->getLastHandler()) {
+    $handler = $factory->getCurrentRevisionHandler($last_handler->getEntityType(), $last_handler->getEntity());
+  }
   if (!empty($handler) && $handler->isEntityForm() && $handler->getLanguage() != LANGUAGE_NONE && drupal_multilingual()) {
     $handler->localTasksAlter($data, $router_item, $root_path);
   }
@@ -1834,7 +1838,8 @@ function entity_translation_settings($entity_type, $bundle) {
  *   A valid language code.
  */
 function entity_translation_language($entity_type, $entity) {
-  $handler = entity_translation_get_handler($entity_type, $entity);
+  $handler = EntityTranslationHandlerFactory::getInstance()->getCurrentRevisionHandler($entity_type, $entity);
+
   if (empty($handler)) {
     return LANGUAGE_NONE;
   }
