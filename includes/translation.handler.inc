@@ -526,19 +526,12 @@ class EntityTranslationDefaultHandler implements EntityTranslationHandlerInterfa
   public function saveTranslations() {
     $translations = $this->getTranslations();
 
+    // Save current values.
+    $this->doSaveTranslations($translations, 'entity_translation');
+
     // Save revision values.
     if ($this->isRevisionable()) {
-      // Save current values.
-      $this->doSaveTranslations($translations, 'entity_translation');
       $this->doSaveTranslations($translations, 'entity_translation_revision', TRUE);
-    }
-    else {
-      // Since this entity translations are not revisionable, we need to prevent
-      // the saveTranslation() method to delete the current node translation
-      // entries (we achieve this by setting the revisionId to 0).
-      $this->revisionId = 0;
-      // Save current values.
-      $this->doSaveTranslations($translations, 'entity_translation');
     }
 
     // The translation handler interface decouples operations on translations at
@@ -595,7 +588,7 @@ class EntityTranslationDefaultHandler implements EntityTranslationHandlerInterfa
       $overrides = array(
         'entity_type' => $this->entityType,
         'entity_id' => $this->entityId,
-        'revision_id' => $this->isRevisionable() ? $this->revisionId : $this->entityId,
+        'revision_id' => $this->isRevisionable() ? $this->revisionId : NULL,
       );
 
       // These instead are just defaults.

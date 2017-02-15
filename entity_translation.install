@@ -446,3 +446,14 @@ function entity_translation_update_7007() {
   // be permanently lost or corrupted. See https://www.drupal.org/node/2396103.
   variable_set('entity_translation_revision_enabled', FALSE);
 }
+
+/**
+ * Clear the revision_id field if entity_translation_revision is disabled.
+ */
+function entity_translation_update_7008() {
+  if (!variable_get('entity_translation_revision_enabled', FALSE)) {
+    db_update('entity_translation')
+      ->fields(array('revision_id' => NULL))
+      ->execute();
+  }
+}
