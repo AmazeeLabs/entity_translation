@@ -569,7 +569,7 @@ class EntityTranslationDefaultHandler implements EntityTranslationHandlerInterfa
     // https://jira.amazeelabs.com/browse/ZT-696
     // @todo This should be removed when not needed anymore, because it logs the
     // entire backtrace.
-    $backtrace = debug_backtrace();
+    /*$backtrace = debug_backtrace();
     foreach ($backtrace as $key => $value) {
       unset($backtrace[$key]['args'], $backtrace[$key]['object']);
     }
@@ -577,7 +577,7 @@ class EntityTranslationDefaultHandler implements EntityTranslationHandlerInterfa
     echo '<pre>';
     print_r($backtrace);
     $output = ob_get_clean();
-    watchdog('entity_translation_debug', 'Entered doSaveTranslations for entity with id: '  . $this->entityId . '. Backtrace: ' . $output, NULL);
+    watchdog('entity_translation_debug', 'Entered doSaveTranslations for entity with id: '  . $this->entityId . '. Backtrace: ' . $output, NULL);*/
 
     // Delete and insert, rather than update, in case a value was added.
     $query = db_delete($table)
@@ -623,11 +623,11 @@ class EntityTranslationDefaultHandler implements EntityTranslationHandlerInterfa
       $query->execute();
       // @todo: remove when not neede anymore by
       // https://jira.amazeelabs.com/browse/ZT-696
-      watchdog('entity_translation_debug', 'New translations saved for entity with id: ' . $this->entityId, NULL);
+      //watchdog('entity_translation_debug', 'New translations saved for entity with id: ' . $this->entityId, NULL);
     }
     // @todo: remove when not neede anymore by
     // https://jira.amazeelabs.com/browse/ZT-696
-    watchdog('entity_translation_debug', 'Leaving doSaveTranslations for entity with id: ' . $this->entityId, NULL);
+    //watchdog('entity_translation_debug', 'Leaving doSaveTranslations for entity with id: ' . $this->entityId, NULL);
   }
 
   /**
