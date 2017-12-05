@@ -273,6 +273,36 @@ interface EntityTranslationHandlerInterface {
   public function isAliasEnabled();
 
   /**
+   * Sets the active language.
+   *
+   * This is the language that determines which translation should be considered
+   * "active" for the wrapped entity. The "Entity Translation" module uses this
+   * information to implement the UI-based translation workflow. Other modules
+   * can rely on it to implement their own entity translation-related logic.
+   *
+   * This will affect which language is returned by the core "entity_language()"
+   * function.
+   *
+   * @param string $langcode
+   *   The active language code.
+   *
+   * @see entity_language()
+   * @see entity_translation_language()
+   * @see ::getActiveLanguage()
+   */
+  public function setActiveLanguage($langcode);
+
+  /**
+   * Returns the active language.
+   *
+   * @return string
+   *   The active language for the wrapped entity.
+   *
+   * @see ::setActiveLanguage()
+   */
+  public function getActiveLanguage();
+
+  /**
    * Sets the active form language.
    */
   public function setFormLanguage($langcode);
@@ -1127,6 +1157,26 @@ class EntityTranslationDefaultHandler implements EntityTranslationHandlerInterfa
    */
   public function isAliasEnabled() {
     return !empty($this->entityInfo['translation']['entity_translation']['alias']);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setActiveLanguage($langcode) {
+    // @todo To fully preserve BC, we proxy the call to the deprecated
+    //   ::setFormLanguage method. This will keep things working even when it
+    //   has been overridden. Inline its implementation here upon removal.
+    $this->setFormLanguage($langcode);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getActiveLanguage() {
+    // @todo To fully preserve BC, we proxy the call to the deprecated
+    //   ::getFormLanguage method. This will keep things working even when it
+    //   has been overridden. Inline its implementation here upon removal.
+    return $this->getFormLanguage();
   }
 
   /**
