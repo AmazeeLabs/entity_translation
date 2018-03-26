@@ -115,6 +115,8 @@ class EntityTranslationHandlerFactory {
       list($id, $revision_id) = entity_extract_ids($entity_type, $entity);
       $revision_id = isset($revision_id) ? $revision_id : 0;
       $entity->entity_translation_handler_id = $entity_type . '-' . (!empty($id) ? 'eid-' . $id . '-' . $revision_id : 'new-' . self::$newId++);
+      list($id, , $bundle) = entity_extract_ids($entity_type, $entity);
+      $entity->entity_translation_handler_id = $entity_type . '-' . $bundle . '-' . (!empty($id) ? 'eid-' . $id : 'new-' . self::$newId++);
     }
     return $entity->entity_translation_handler_id;
   }
