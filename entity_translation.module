@@ -939,6 +939,76 @@ function entity_translation_field_language_alter(&$display_language, $context) {
 }
 
 /**
+ * Implements hook_query_alter().
+ * @param QueryAlterableInterface $query
+ *
+ * Rewrite entity queries so if language fallback and the display of unavailable
+ * translations are disabled, untranslated nodes are not listed.
+ */
+function entity_translation_query_alter(QueryAlterableInterface $query) {
+  $only_availables = !variable_get('locale_field_language_fallback', TRUE) && !variable_get('entity_translation_display_unavailable', TRUE);
+  if($only_availables) {
+    $entity_info = entity_get_info();
+    $entity_tables = entity_translation_get_base_tables($entity_info);
+    // Read the base table from the query if available or default to the first
+    // table in the query's tables array.
+    if (!$base_table = $query->getMetaData('base_table')) {
+      $tables = $query->getTables();
+      $base_table = array_shift($tables);
+      $base_table = $base_table['table'];
+    }
+
+    $entity_type = array_search($base_table, $entity_tables);
+    if (in_array($base_table, $entity_tables) && entity_translation_enabled($entity_type)
+      && !(user_access('translate any entity') || user_access("translate $entity_type entities"))) {
+      // Get the node table alias if this request is on a node table.
+      foreach ($query->getTables() as $table) {
+        if ($table['join type'] == NULL && in_array($table['table'], $entity_tables)) {
+          $entity_alias = empty($table['alias']) ? $table['table'] : $table['alias'];
+        }
+      }
+
+      if (isset($entity_alias)) {
+        // @TODO: hack. See http://drupal.org/node/1452642.
+        // There's a status field in entity_translation table,
+        // similar to the node table, and conditions are not prefixed by
+        // the node alias in node.module.
+        // So we have to add the node alias to avoid errors.
+        $conditions = &$query->conditions();
+        foreach ($conditions as $key => $condition) {
+          if(is_array($condition) && isset($condition['field']) && is_string($condition['field']) && !empty($condition['field'])) {
+            $field_aliased = is_string($condition['field']) && strpos($condition['field'], '.') !== FALSE;
+            if (!$field_aliased) {
+              $conditions[$key]['field'] = $entity_alias . '.' . $condition['field'];
+            }
+          }
+        }
+        $entity_key = $entity_info[array_search($base_table, $entity_tables)]['entity keys']['id'];
+        $query->join('entity_translation', 'et', "et.entity_id = $entity_alias.$entity_key AND et.entity_type = :entity_type", array(':entity_type' => $entity_type));
+        $query->condition('et.status', 1, '=');
+        $query->addTag('entity_translation');
+      }
+    }
+  }
+}
+
+function entity_translation_get_base_tables($entity_info) {
+  static $drupal_static_fast;
+  if (!isset($drupal_static_fast)) {
+    $drupal_static_fast['entity_base_tables'] = &drupal_static(__FUNCTION__);
+  }
+  $entity_tables = &$drupal_static_fast['entity_base_tables'];
+  if (empty($entity_tables)) {
+    $entity_tables = array();
+    foreach ($entity_info as $key => $value) {
+      $entity_tables[$key] = $value['base table'];
+    }
+  }
+
+  return $entity_tables;
+}
+
+/**
  * Implements hook_field_attach_view_alter().
  *
  * Hide the entity if no translation is available for the current language and

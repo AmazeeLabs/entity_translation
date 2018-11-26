@@ -18,6 +18,18 @@ function entity_translation_admin_form($form, $form_state) {
     '#default_value' => variable_get('locale_field_language_fallback', TRUE),
   );
 
+  $form['entity_translation_display_unavailable'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Display a warning message for unavailable translations'),
+    '#description' => t('If checked, a themeable warning message will replace the entity when a translation is unavailable.'),
+    '#default_value' => variable_get('entity_translation_display_unavailable', TRUE),
+    '#states' => array(
+      'visible' => array(
+        ':input[name="locale_field_language_fallback"]' => array('checked' => FALSE),
+      ),
+    ),
+  );
+
   $form['entity_translation_show_fallback_on_overview_pages'] = array(
     '#type' => 'checkbox',
     '#title' => t('Show fallback statuses on overview pages'),
