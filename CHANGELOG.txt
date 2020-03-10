@@ -1,6 +1,8 @@
 
 Entity Translation 7.x-1.x, xxxx-xx-xx
 --------------------------------------
+#S156840 by HelenaEksler, plach: Fixed XSS vulnerability in the translation
+  form page title.
 Issue #2423661 by marcoscano: Module api documentation has wrong example ("path
   sets" instead of "path schemes")
 #2305547 by das-peter: Fixed undefined index name.

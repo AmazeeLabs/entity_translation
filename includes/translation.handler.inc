@@ -1615,9 +1615,12 @@ class EntityTranslationDefaultHandler implements EntityTranslationHandlerInterfa
 
   /**
    * Returns the title to be used for the entity form page.
+   *
+   * This may contain HTML markup and thus needs to be sanitized, since it will
+   * be used as page title as-is.
    */
   protected function entityFormTitle() {
-    return $this->getLabel();
+    return check_plain($this->getLabel());
   }
 
   /**
